@@ -1,0 +1,423 @@
+// threatreport.h
+#ifndef THREATREPORT_H
+#define THREATREPORT_H
+
+#include <string>
+#include <vector>
+#include <chrono>
+#include <map>
+#include <unordered_map>
+#include <memory>
+#include <algorithm>
+#include <cmath>
+
+// Threat Severity Enum
+enum class ThreatSeverity : int {
+    LOW = 0,
+    MEDIUM = 1,
+    HIGH = 2,
+    CRITICAL = 3
+};
+
+// Threat Report Structure
+struct ThreatReport {
+    std::string engine;
+    double confidence;
+    ThreatSeverity severity;
+    std::vector<std::string> signatures;
+    std::chrono::steady_clock::time_point detection_time;
+    double processing_time;
+    
+    ThreatReport() : confidence(0.0), severity(ThreatSeverity::LOW), processing_time(0.0) {
+        detection_time = std::chrono::steady_clock::now();
+    }
+    
+    std::string severityToString() const {
+        switch(severity) {
+            case ThreatSeverity::LOW: return "LOW";
+            case ThreatSeverity::MEDIUM: return "MEDIUM";
+            case ThreatSeverity::HIGH: return "HIGH";
+            case ThreatSeverity::CRITICAL: return "CRITICAL";
+            default: return "UNKNOWN";
+        }
+    }
+};
+
+// Threat Intelligence Class
+class ThreatIntelligence {
+private:
+    struct ThreatPattern {
+        std::string name;
+        std::string signature;
+        double frequency;  // Attacks per day
+        double severity;
+        std::chrono::system_clock::time_point last_seen;
+        std::vector<std::string> affected_engines;
+    };
+    
+    struct AttackSource {
+        std::string ip_range;
+        std::string geographic_location;
+        std::string threat_actor;
+        double threat_level;
+        std::vector<std::string> techniques;
+    };
+    
+    std::unordered_map<std::string, ThreatPattern> threat_patterns;
+    std::unordered_map<std::string, AttackSource> attack_sources;
+    std::map<std::string, double> engine_relevance;
+    std::unordered_map<std::string, double> pattern_frequencies;
+    std::chrono::system_clock::time_point last_update;
+    double average_threat_level;
+    size_t total_threats_observed;
+    
+    // Machine Learning for relevance scoring
+    struct MLModel {
+        std::unordered_map<std::string, double> feature_weights;
+        double bias;
+        
+        double predict(const std::map<std::string, double>& features) {
+            double score = bias;
+            for (const auto& [feature, value] : features) {
+                auto it = feature_weights.find(feature);
+                if (it != feature_weights.end()) {
+                    score += it->second * value;
+                }
+            }
+            return 1.0 / (1.0 + exp(-score)); // Sigmoid
+        }
+        
+        void update(const std::map<std::string, double>& features, 
+                   double actual_relevance, 
+                   double learning_rate = 0.01) {
+            double prediction = predict(features);
+            double error = actual_relevance - prediction;
+            
+            // Update weights
+            for (auto& [feature, weight] : feature_weights) {
+                auto it = features.find(feature);
+                if (it != features.end()) {
+                    weight += learning_rate * error * it->second;
+                }
+            }
+            bias += learning_rate * error;
+        }
+    };
+    
+    MLModel engine_relevance_model;
+    
+    // Frequency Analysis
+    struct FrequencyTracker {
+        std::map<std::chrono::system_clock::time_point, int> hourly_counts;
+        int max_per_hour;
+        double average_per_hour;
+        
+        void add_occurrence() {
+            auto now = std::chrono::system_clock::now();
+            auto hour_time = std::chrono::time_point_cast<std::chrono::hours>(now);
+            
+            hourly_counts[hour_time]++;
+            
+            // Update statistics
+            update_statistics();
+        }
+        
+        void update_statistics() {
+            if (hourly_counts.empty()) {
+                max_per_hour = 0;
+                average_per_hour = 0.0;
+                return;
+            }
+            
+            max_per_hour = 0;
+            double total = 0.0;
+            
+            for (const auto& [time, count] : hourly_counts) {
+                max_per_hour = std::max(max_per_hour, count);
+                total += count;
+            }
+            
+            average_per_hour = total / hourly_counts.size();
+            
+            // Clean old entries (keep last 24 hours)
+            auto cutoff = std::chrono::system_clock::now() - std::chrono::hours(24);
+            for (auto it = hourly_counts.begin(); it != hourly_counts.end(); ) {
+                if (it->first < cutoff) {
+                    it = hourly_counts.erase(it);
+                } else {
+                    ++it;
+                }
+            }
+        }
+    };
+    
+    std::unordered_map<std::string, FrequencyTracker> pattern_frequency_trackers;
+    
+    // Initialize with common threat patterns
+    void initialize_threat_patterns() {
+        // Common malware patterns
+        add_threat_pattern("PE_Header", "4D 5A", 50.0, 0.7);
+        add_threat_pattern("ELF_Header", "7F 45 4C 46", 30.0, 0.6);
+        add_threat_pattern("MachO_Header", "CA FE BA BE", 20.0, 0.5);
+        add_threat_pattern("Shellcode_NOP", "90 90 90 90", 40.0, 0.8);
+        add_threat_pattern("PowerShell_Attack", "49 45 58", 60.0, 0.9);
+        add_threat_pattern("JScript_Encoded", "6A 61 76 61 73 63 72 69 70 74", 35.0, 0.7);
+        add_threat_pattern("ROP_Gadget", "C3", 25.0, 0.8);
+        add_threat_pattern("Heap_Spray", "41 41 41 41", 45.0, 0.85);
+        
+        // Attack sources
+        add_attack_source("192.168.0.0/16", "Internal", "Insider", 0.3, {"Data_Exfil", "Privilege_Escalation"});
+        add_attack_source("10.0.0.0/8", "Internal", "Compromised_Internal", 0.6, {"Lateral_Movement", "Credential_Theft"});
+        add_attack_source("External_APT", "Global", "APT29", 0.95, {"Zero_Day", "Spear_Phishing", "C2_Communication"});
+        
+        // Initialize engine relevance
+        initialize_engine_relevance();
+    }
+    
+    void initialize_engine_relevance() {
+        engine_relevance = {
+            {"V3_Quarantine", 0.7},
+            {"V5_NeuralQuantum", 0.85},
+            {"V6_Enterprise", 0.9},
+            {"V8_GPU_Accelerated", 0.8},
+            {"V9_Quantum_Hardware", 0.95},
+            {"V10_Deep_Learning", 0.88},
+            {"V11_Cloud_Intelligence", 0.75},
+            {"EnhancedQuantumHarmonicV2", 0.92}
+        };
+        
+        // Initialize ML model weights
+        engine_relevance_model.feature_weights = {
+            {"detection_accuracy", 0.3},
+            {"false_positive_rate", -0.4},
+            {"processing_speed", 0.2},
+            {"threat_coverage", 0.35},
+            {"signature_freshness", 0.25}
+        };
+        engine_relevance_model.bias = 0.1;
+    }
+    
+    void add_threat_pattern(const std::string& name, 
+                           const std::string& signature, 
+                           double frequency, 
+                           double severity) {
+        ThreatPattern pattern;
+        pattern.name = name;
+        pattern.signature = signature;
+        pattern.frequency = frequency;
+        pattern.severity = severity;
+        pattern.last_seen = std::chrono::system_clock::now();
+        pattern.affected_engines = {"V3_Quarantine", "V6_Enterprise", "V10_Deep_Learning"};
+        
+        threat_patterns[name] = pattern;
+        pattern_frequencies[name] = frequency;
+    }
+    
+    void add_attack_source(const std::string& ip_range,
+                          const std::string& location,
+                          const std::string& actor,
+                          double threat_level,
+                          const std::vector<std::string>& techniques) {
+        AttackSource source;
+        source.ip_range = ip_range;
+        source.geographic_location = location;
+        source.threat_actor = actor;
+        source.threat_level = threat_level;
+        source.techniques = techniques;
+        
+        attack_sources[ip_range] = source;
+    }
+    
+    std::map<std::string, double> extract_engine_features(const std::string& engine_name, 
+                                                         const ThreatReport& report) {
+        std::map<std::string, double> features;
+        
+        // Calculate features based on report
+        features["detection_accuracy"] = report.confidence;
+        features["false_positive_rate"] = (report.severity == ThreatSeverity::LOW && report.confidence > 0.7) ? 1.0 : 0.0;
+        features["processing_speed"] = 1.0 / (report.processing_time + 0.001);
+        features["threat_coverage"] = report.signatures.size() / 10.0;
+        
+        // Calculate signature freshness
+        auto now = std::chrono::steady_clock::now();
+        auto age = std::chrono::duration_cast<std::chrono::hours>(now - report.detection_time);
+        features["signature_freshness"] = 1.0 / (age.count() + 1.0);
+        
+        return features;
+    }
+    
+public:
+    ThreatIntelligence() : average_threat_level(0.0), total_threats_observed(0) {
+        last_update = std::chrono::system_clock::now();
+        initialize_threat_patterns();
+    }
+    
+    // Update threat intelligence with new report
+    void update(const ThreatReport& report) {
+        total_threats_observed++;
+        
+        // Update pattern frequencies
+        for (const auto& signature : report.signatures) {
+            if (pattern_frequency_trackers.find(signature) == pattern_frequency_trackers.end()) {
+                pattern_frequency_trackers[signature] = FrequencyTracker();
+            }
+            pattern_frequency_trackers[signature].add_occurrence();
+        }
+        
+        // Update engine relevance using ML
+        auto features = extract_engine_features(report.engine, report);
+        double actual_relevance = (report.severity >= ThreatSeverity::MEDIUM) ? 1.0 : 0.0;
+        engine_relevance_model.update(features, actual_relevance);
+        
+        // Update engine relevance score
+        double predicted_relevance = engine_relevance_model.predict(features);
+        engine_relevance[report.engine] = predicted_relevance;
+        
+        // Update average threat level
+        update_average_threat_level(report);
+        
+        // Update last seen time for matched patterns
+        for (const auto& signature : report.signatures) {
+            auto it = std::find_if(threat_patterns.begin(), threat_patterns.end(),
+                [&](const auto& pair) { return pair.second.signature.find(signature) != std::string::npos; });
+            
+            if (it != threat_patterns.end()) {
+                it->second.last_seen = std::chrono::system_clock::now();
+                it->second.frequency += 0.1; // Increment frequency
+            }
+        }
+        
+        last_update = std::chrono::system_clock::now();
+    }
+    
+    void update_average_threat_level(const ThreatReport& report) {
+        double severity_value = static_cast<double>(static_cast<int>(report.severity));
+        average_threat_level = (average_threat_level * (total_threats_observed - 1) + severity_value) 
+                               / total_threats_observed;
+    }
+    
+    // Check for high frequency attack patterns
+    bool hasHighFrequencyAttackPatterns() const {
+        for (const auto& [pattern, tracker] : pattern_frequency_trackers) {
+            if (tracker.average_per_hour > 10.0 || tracker.max_per_hour > 50) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    std::vector<std::string> getHighFrequencyAttackPatterns() const {
+        std::vector<std::string> high_freq_patterns;
+        for (const auto& [pattern, tracker] : pattern_frequency_trackers) {
+            if (tracker.average_per_hour > 5.0 || tracker.max_per_hour > 20) {
+                high_freq_patterns.push_back(pattern);
+            }
+        }
+        return high_freq_patterns;
+    }
+    
+    double getAverageThreatLevel() const {
+        return average_threat_level;
+    }
+    
+    bool isEngineRelevant(const std::string& engine_name) const {
+        auto it = engine_relevance.find(engine_name);
+        if (it == engine_relevance.end()) return false;
+        
+        // Engine is relevant if relevance > 0.5 and has been updated recently
+        auto now = std::chrono::system_clock::now();
+        auto age = std::chrono::duration_cast<std::chrono::days>(now - last_update);
+        
+        return it->second > 0.5 && age.count() < 7; // Relevant if updated within 7 days
+    }
+    
+    double getEngineRelevance(const std::string& engine_name) const {
+        auto it = engine_relevance.find(engine_name);
+        if (it != engine_relevance.end()) {
+            // Apply decay based on time since last update
+            auto now = std::chrono::system_clock::now();
+            auto age = std::chrono::duration_cast<std::chrono::days>(now - last_update);
+            double decay = exp(-age.count() / 30.0); // 30-day half-life
+            
+            return it->second * decay;
+        }
+        return 0.0;
+    }
+    
+    // New methods for enhanced threat intelligence
+    std::vector<std::string> getThreatPatternsBySeverity(double min_severity = 0.5) const {
+        std::vector<std::string> patterns;
+        for (const auto& [name, pattern] : threat_patterns) {
+            if (pattern.severity >= min_severity) {
+                patterns.push_back(name + " (severity: " + std::to_string(pattern.severity) + ")");
+            }
+        }
+        return patterns;
+    }
+    
+    std::map<std::string, double> getEnginePerformance() const {
+        return engine_relevance;
+    }
+    
+    std::string getCurrentThreatLandscape() const {
+        std::stringstream ss;
+        ss << "Threat Intelligence Report\n";
+        ss << "=========================\n";
+        ss << "Total Threats Observed: " << total_threats_observed << "\n";
+        ss << "Average Threat Level: " << std::fixed << std::setprecision(2) << average_threat_level << "\n";
+        ss << "Last Update: " << std::chrono::system_clock::to_time_t(last_update) << "\n";
+        
+        auto high_freq = getHighFrequencyAttackPatterns();
+        ss << "High Frequency Patterns: " << high_freq.size() << "\n";
+        for (const auto& pattern : high_freq) {
+            ss << "  - " << pattern << "\n";
+        }
+        
+        ss << "Engine Performance:\n";
+        for (const auto& [engine, relevance] : engine_relevance) {
+            ss << "  " << engine << ": " << std::fixed << std::setprecision(3) << relevance;
+            if (isEngineRelevant(engine)) {
+                ss << " [RELEVANT]";
+            }
+            ss << "\n";
+        }
+        
+        return ss.str();
+    }
+    
+    // Predict threat based on historical patterns
+    double predictThreatProbability(const std::vector<uint8_t>& data) const {
+        if (data.empty()) return 0.0;
+        
+        double total_score = 0.0;
+        int matches = 0;
+        
+        // Check for known patterns
+        for (const auto& [name, pattern] : threat_patterns) {
+            // Simple pattern matching (in reality would use more sophisticated matching)
+            std::string data_str(data.begin(), data.end());
+            if (data_str.find(pattern.signature) != std::string::npos) {
+                total_score += pattern.severity * pattern.frequency;
+                matches++;
+            }
+        }
+        
+        if (matches > 0) {
+            return std::min(1.0, total_score / (matches * 100.0));
+        }
+        
+        return 0.0;
+    }
+};
+
+// Pipeline Result Structure
+struct PipelineResult {
+    std::vector<ThreatReport> reports;
+    double overall_threat;
+    std::string final_verdict;
+    double total_processing_time;
+    
+    PipelineResult() : overall_threat(0.0), total_processing_time(0.0) {}
+};
+
+#endif // THREATREPORT_H
