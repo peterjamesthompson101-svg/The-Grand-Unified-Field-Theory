@@ -1,0 +1,14 @@
+Execution Instructions
+
+    Save the file: Save the code above as setup_shield.sh.
+
+    Make it executable: Run chmod +x setup_shield.sh.
+
+    Run the script: Run ./setup_shield.sh.
+
+    Build the System:
+mkdir -p build && cd build
+cmake ..
+make -j$(nproc)
+sudo ./quantum_shield
+

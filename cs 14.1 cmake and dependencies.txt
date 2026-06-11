@@ -1,0 +1,56 @@
+#Before compiling, ensure your environment has the following development #packages installed: OpenSSL: For SHA256 and cryptographic functions. nlohmann-json: For JSON data handling. spdlog: For high-performance logging. cpprestsdk: For asynchronous HTTP/Blockchain communication.
+#4. Compilation & Execution
+
+#To deploy the system on your Raspberry Pi or Linux environment, follow #these steps:
+
+#    Create a build directory: mkdir build && cd build
+
+#    Generate the Makefile: cmake ..
+
+#    Compile: make -j$(nproc)
+
+#    Run with Root Privileges (Required for /dev/urandom access and #hardware GPIO): sudo ./quantum_shield
+
+
+cmake_minimum_required(VERSION 3.10)
+project(QuantumShieldV11)
+
+# Set C++ Standard
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Find Packages
+find_package(OpenSSL REQUIRED)
+find_package(nlohmann_json REQUIRED)
+find_package(spdlog REQUIRED)
+find_package(cpprestsdk REQUIRED)
+
+# Check for WiringPi (Hardware Layer)
+find_library(WIRINGPI_LIBRARY NAMES wiringPi)
+
+add_executable(quantum_shield main.cpp)
+
+# Linking Libraries
+target_link_libraries(quantum_shield 
+    PRIVATE 
+    OpenSSL::SSL 
+    OpenSSL::Crypto
+    nlohmann_json::nlohmann_json
+    spdlog::spdlog
+    cpprestsdkbridge
+    cpprest
+)
+
+# Conditionally link WiringPi if found
+if(WIRINGPI_LIBRARY)
+    target_link_libraries(quantum_shield PRIVATE ${WIRINGPI_LIBRARY})
+    target_compile_definitions(quantum_shield PRIVATE HAS_HARDWARE=1)
+    message(STATUS "WiringPi found: Hardware Shielding enabled.")
+else()
+    target_compile_definitions(quantum_shield PRIVATE HAS_HARDWARE=0)
+    message(STATUS "WiringPi not found: Compiling in Emulation Mode.")
+endif()
+
+# Threading support
+find_package(Threads REQUIRED)
+target_link_libraries(quantum_shield PRIVATE Threads::Threads)
