@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Temporal Mass (Tm) Surface Map</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #f8fafc 0%, #e0f2fe 100%);
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1f2937;
+            margin-bottom: 10px;
+            font-size: 2rem;
+        }
+        .subtitle {
+            color: #6b7280;
+            margin-bottom: 20px;
+        }
+        .controls {
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        label {
+            font-weight: bold;
+        }
+        input[type="range"] {
+            width: 150px;
+        }
+        .abc-value {
+            background: #e5e7eb;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+        .chart-container {
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            margin: 20px 0;
+            position: relative;
+        }
+        canvas {
+            display: block;
+            border-radius: 6px;
+        }
+        .legend {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .legend-section {
+            background: #f9fafb;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+        }
+        .notes {
+            background: #f1f5f9;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        .notes h3 {
+            margin-top: 0;
+            color: #374151;
+        }
+        .notes ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .notes li {
+            margin-bottom: 5px;
+            color: #4b5563;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Temporal Mass (Tm) Surface Map</h1>
+        <p class="subtitle">Visualization of Tm = km·2q·m·v^(ABC-1)·a showing collapse zones and phase transitions</p>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label for="abcSlider">ABC Exponent:</label>
+                <input type="range" id="abcSlider" min="1.5" max="4.0" step="0.1" value="2.5">
+                <span class="abc-value" id="abcValue">2.5</span>
+            </div>
+            <button id="animateBtn" class="btn-primary">▶ Animate ABC</button>
+            <div class="control-group">
+                <input type="checkbox" id="showThreshold" checked>
+                <label for="showThreshold">Show Critical Thresholds</label>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="tmChart" width="800" height="500"></canvas>
+        </div>
+
+        <div class="legend">
+            <div class="legend-section">
+                <h3>Phase Regions</h3>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: rgba(220, 38, 38, 0.3); border: 1px solid #dc2626;"></div>
+                    <span><strong>Collapse Zone:</strong> Tm &lt; 0.1</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: rgba(245, 158, 11, 0.3); border: 1px solid #f59e0b;"></div>
+                    <span><strong>Tau Intervention:</strong> 0.1 ≤ Tm &lt; 0.2</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #3b82f6;"></div>
+                    <span><strong>Stable Phase:</strong> Normal inertial behavior</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: rgba(5, 150, 105, 0.2); border: 1px solid #059669;"></div>
+                    <span><strong>High Inertia:</strong> Tm &gt; 10</span>
+                </div>
+            </div>
+
+            <div class="legend-section">
+                <h3>Current Analysis</h3>
+                <div id="analysis">
+                    <p><strong>ABC:</strong> <span id="currentABC">2.5</span></p>
+                    <p><strong>Exponent:</strong> <span id="currentExp">1.5</span></p>
+                    <p><strong>Behavior:</strong> <span id="behavior">Moderate exponential growth</span></p>
+                    <p><strong>Critical Velocity:</strong> <span id="criticalV">0.63</span></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="notes">
+            <h3>Key Theoretical Insights:</h3>
+            <ul>
+                <li><strong>Temporal Mass Formula:</strong> Tm = km·2q·m·v^(ABC-1)·a</li>
+                <li><strong>Collapse Condition:</strong> When Tm → 0, mass detaches from spacetime resistance</li>
+                <li><strong>Harmonic Throat Formation:</strong> Collapse creates pinch singularity, not black hole</li>
+                <li><strong>ABC Scaling:</strong> Higher exponents create exponential inertial barriers</li>
+                <li><strong>Phase Transitions:</strong> Energy becomes phase-pure during collapse</li>
+                <li><strong>Tau Field Necessity:</strong> Required for stabilization in intervention zone</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Constants
+        const km = 1.0;
+        const q = 1.0;
+        const m = 1.0;
+        const a = 1.0;
+        const threshold = 0.1;
+        const maxVelocity = 3.0;
+        const maxTm = 20;
+
+        // Canvas setup
+        const canvas = document.getElementById('tmChart');
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+        const margin = { top: 40, right: 60, bottom: 80, left: 80 };
+        const chartWidth = width - margin.left - margin.right;
+        const chartHeight = height - margin.top - margin.bottom;
+
+        // Control elements
+        const abcSlider = document.getElementById('abcSlider');
+        const abcValue = document.getElementById('abcValue');
+        const animateBtn = document.getElementById('animateBtn');
+        const showThreshold = document.getElementById('showThreshold');
+
+        // Animation state
+        let isAnimating = false;
+        let animationId = null;
+
+        // Calculate temporal mass
+        function calculateTm(velocity, abc) {
+            if (velocity === 0) return 0;
+            const exponent = abc - 1;
+            return km * 2 * q * m * Math.pow(velocity, exponent) * a;
+        }
+
+        // Generate data points
+        function generateData(abc) {
+            const data = [];
+            const steps = 300;
+            for (let i = 0; i <= steps; i++) {
+                const v = (i / steps) * maxVelocity;
+                const tm = Math.min(calculateTm(v, abc), maxTm);
+                data.push({ velocity: v, tm: tm });
+            }
+            return data;
+        }
+
+        // Scale functions
+        function scaleX(v) {
+            return margin.left + (v / maxVelocity) * chartWidth;
+        }
+
+        function scaleY(tm) {
+            return margin.top + chartHeight - (tm / maxTm) * chartHeight;
+        }
+
+        // Draw the chart
+        function drawChart(abc) {
+            ctx.clearRect(0, 0, width, height);
+            
+            // Background
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, width, height);
+
+            // Phase regions
+            if (showThreshold.checked) {
+                // High inertia zone (green) - draw first so it's in background
+                ctx.fillStyle = 'rgba(5, 150, 105, 0.15)';
+                ctx.fillRect(margin.left, margin.top, chartWidth, scaleY(10) - margin.top);
+                
+                // Tau intervention zone (orange)
+                ctx.fillStyle = 'rgba(245, 158, 11, 0.2)';
+                ctx.fillRect(margin.left, scaleY(threshold * 2), chartWidth, scaleY(threshold) - scaleY(threshold * 2));
+                
+                // Collapse zone (red) - draw last so it's most visible
+                ctx.fillStyle = 'rgba(220, 38, 38, 0.2)';
+                ctx.fillRect(margin.left, scaleY(threshold), chartWidth, scaleY(0) - scaleY(threshold));
+            }
+
+            // Grid lines
+            ctx.strokeStyle = '#f0f0f0';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 10; i++) {
+                const x = margin.left + (i / 10) * chartWidth;
+                ctx.beginPath();
+                ctx.moveTo(x, margin.top);
+                ctx.lineTo(x, margin.top + chartHeight);
+                ctx.stroke();
+
+                const y = margin.top + (i / 10) * chartHeight;
+                ctx.beginPath();
+                ctx.moveTo(margin.left, y);
+                ctx.lineTo(margin.left + chartWidth, y);
+                ctx.stroke();
+            }
+
+            // Axes
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 2;
+            // X-axis
+            ctx.beginPath();
+            ctx.moveTo(margin.left, margin.top + chartHeight);
+            ctx.lineTo(margin.left + chartWidth, margin.top + chartHeight);
+            ctx.stroke();
+            
+            // Y-axis
+            ctx.beginPath();
+            ctx.moveTo(margin.left, margin.top);
+            ctx.lineTo(margin.left, margin.top + chartHeight);
+            ctx.stroke();
+
+            // Axis labels and ticks
+            ctx.fillStyle = '#000000';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            
+            // X-axis ticks and labels
+            for (let v = 0; v <= maxVelocity; v += 0.5) {
+                const x = scaleX(v);
+                ctx.beginPath();
+                ctx.moveTo(x, margin.top + chartHeight);
+                ctx.lineTo(x, margin.top + chartHeight + 5);
+                ctx.stroke();
+                ctx.fillText(v.toFixed(1), x, margin.top + chartHeight + 20);
+            }
+            ctx.fillText('Velocity (v)', margin.left + chartWidth/2, height - 20);
+
+            // Y-axis ticks and labels
+            ctx.textAlign = 'right';
+            for (let tm = 0; tm <= maxTm; tm += 2) {
+                const y = scaleY(tm);
+                ctx.beginPath();
+                ctx.moveTo(margin.left - 5, y);
+                ctx.lineTo(margin.left, y);
+                ctx.stroke();
+                ctx.fillText(tm.toString(), margin.left - 10, y + 4);
+            }
+            
+            // Y-axis label
+            ctx.save();
+            ctx.translate(20, margin.top + chartHeight/2);
+            ctx.rotate(-Math.PI/2);
+            ctx.textAlign = 'center';
+            ctx.fillText('Temporal Mass (Tm)', 0, 0);
+            ctx.restore();
+
+            // Threshold lines
+            if (showThreshold.checked) {
+                // Collapse threshold
+                ctx.strokeStyle = '#dc2626';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([8, 4]);
+                ctx.beginPath();
+                ctx.moveTo(margin.left, scaleY(threshold));
+                ctx.lineTo(margin.left + chartWidth, scaleY(threshold));
+                ctx.stroke();
+                
+                ctx.fillStyle = '#dc2626';
+                ctx.font = '11px Arial';
+                ctx.textAlign = 'right';
+                ctx.fillText('Collapse Threshold', margin.left + chartWidth - 5, scaleY(threshold) - 5);
+
+                // Tau intervention line
+                ctx.strokeStyle = '#f59e0b';
+                ctx.setLineDash([4, 2]);
+                ctx.beginPath();
+                ctx.moveTo(margin.left, scaleY(threshold * 2));
+                ctx.lineTo(margin.left + chartWidth, scaleY(threshold * 2));
+                ctx.stroke();
+                
+                ctx.fillStyle = '#f59e0b';
+                ctx.fillText('Tau Intervention', margin.left + chartWidth - 5, scaleY(threshold * 2) - 5);
+                ctx.setLineDash([]);
+            }
+
+            // Main Tm curve
+            const data = generateData(abc);
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            
+            for (let i = 0; i < data.length; i++) {
+                const x = scaleX(data[i].velocity);
+                const y = scaleY(data[i].tm);
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.stroke();
+
+            // Highlight collapse points
+            ctx.fillStyle = '#dc2626';
+            for (let i = 0; i < data.length; i++) {
+                if (data[i].tm < threshold && data[i].tm > 0) {
+                    const x = scaleX(data[i].velocity);
+                    const y = scaleY(data[i].tm);
+                    ctx.beginPath();
+                    ctx.arc(x, y, 3, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+            }
+
+            // Title
+            ctx.fillStyle = '#1f2937';
+            ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(`Temporal Mass vs Velocity (ABC = ${abc.toFixed(1)})`, width/2, 25);
+        }
+
+        // Update analysis
+        function updateAnalysis(abc) {
+            const exponent = abc - 1;
+            let behavior = '';
+            if (abc < 2) behavior = 'Sublinear growth - easier collapse';
+            else if (abc === 2) behavior = 'Linear relationship';
+            else if (abc < 3) behavior = 'Moderate exponential growth';
+            else behavior = 'Rapid exponential growth - high inertia barrier';
+
+            const vc = Math.pow(threshold / (km * 2 * q * m * a), 1 / exponent);
+            const criticalV = isFinite(vc) ? vc.toFixed(2) : '∞';
+
+            document.getElementById('currentABC').textContent = abc.toFixed(1);
+            document.getElementById('currentExp').textContent = exponent.toFixed(1);
+            document.getElementById('behavior').textContent = behavior;
+            document.getElementById('criticalV').textContent = criticalV;
+        }
+
+        // Event listeners
+        abcSlider.addEventListener('input', function() {
+            const abc = parseFloat(this.value);
+            abcValue.textContent = abc.toFixed(1);
+            drawChart(abc);
+            updateAnalysis(abc);
+        });
+
+        showThreshold.addEventListener('change', function() {
+            const abc = parseFloat(abcSlider.value);
+            drawChart(abc);
+        });
+
+        animateBtn.addEventListener('click', function() {
+            if (isAnimating) {
+                // Stop animation
+                isAnimating = false;
+                clearInterval(animationId);
+                this.textContent = '▶ Animate ABC';
+                this.className = 'btn-primary';
+                abcSlider.disabled = false;
+            } else {
+                // Start animation
+                isAnimating = true;
+                this.textContent = '⏹ Stop Animation';
+                this.className = 'btn-danger';
+                abcSlider.disabled = true;
+                
+                let currentABC = 1.5;
+                animationId = setInterval(() => {
+                    currentABC += 0.1;
+                    if (currentABC > 4.0) currentABC = 1.5;
+                    
+                    abcSlider.value = currentABC;
+                    abcValue.textContent = currentABC.toFixed(1);
+                    drawChart(currentABC);
+                    updateAnalysis(currentABC);
+                }, 300);
+            }
+        });
+
+        // Initial draw
+        drawChart(2.5);
+        updateAnalysis(2.5);
+    </script>
+</body>
+</html>

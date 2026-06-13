@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tau Field Envelope Visualization</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .title {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            display: block;
+            margin: 0 auto;
+        }
+        .controls {
+            text-align: center;
+            margin-top: 15px;
+        }
+        .slider-container {
+            display: inline-block;
+            margin: 0 10px;
+            text-align: center;
+        }
+        .slider-container label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+        input[type="range"] {
+            width: 100px;
+        }
+        .parameter-display {
+            font-size: 10px;
+            color: #666;
+        }
+        .equation {
+            text-align: center;
+            margin: 15px 0;
+            font-family: 'Times New Roman', serif;
+            font-size: 14px;
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 10px;
+            font-size: 11px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .color-box {
+            width: 12px;
+            height: 12px;
+            border: 1px solid #333;
+        }
+        button {
+            margin: 5px;
+            padding: 8px 16px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="title">Diagram 3.1: Tau Field Envelope Visualization<br>
+        Ψ<sub>τ</sub>(r,t) = ε(t) sin(ω<sub>τ</sub>t) e<sup>-λ(t)r²</sup><br>
+        <small style="color: #666;">Harmonic containment system for aperture stabilization</small></div>
+        
+        <canvas id="tauCanvas" width="800" height="600"></canvas>
+        
+        <div class="controls">
+            <div class="slider-container">
+                <label>ε₀ (Max Amplitude V/m)</label>
+                <input type="range" id="epsilonSlider" min="0.5" max="3.0" step="0.1" value="1.5">
+                <div class="parameter-display" id="epsilonValue">1.5</div>
+            </div>
+            <div class="slider-container">
+                <label>ω<sub>τ</sub> (Carrier Freq rad/s)</label>
+                <input type="range" id="omegaSlider" min="0.1" max="2.0" step="0.1" value="0.5">
+                <div class="parameter-display" id="omegaValue">0.5</div>
+            </div>
+            <div class="slider-container">
+                <label>λ₀ (Initial Containment m⁻²)</label>
+                <input type="range" id="lambdaSlider" min="0.001" max="0.01" step="0.001" value="0.005">
+                <div class="parameter-display" id="lambdaValue">0.005</div>
+            </div>
+            <div class="slider-container">
+                <label>β (Decay Rate s⁻¹)</label>
+                <input type="range" id="betaSlider" min="0.001" max="0.05" step="0.001" value="0.01">
+                <div class="parameter-display" id="betaValue">0.01</div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button onclick="toggleAnimation()">Play/Pause</button>
+            <button onclick="resetTime()">Reset Time</button>
+            <button onclick="toggleCrossSection()">Toggle Cross-Section</button>
+            <button onclick="simulateEntry()" style="background: #ff6b35;">Simulate Entry Window</button>
+        </div>
+        
+        <div class="legend">
+            <div class="legend-item">
+                <div class="color-box" style="background: linear-gradient(to right, #ff0000, #ffff00, #00ff00, #0000ff);"></div>
+                <span>Field Intensity |Ψ<sub>τ</sub>| (Red=High, Blue=Low)</span>
+            </div>
+            <div class="legend-item">
+                <div class="color-box" style="background: #ffffff; border: 2px solid #000;"></div>
+                <span>Aperture Core (Spacetime Throat)</span>
+            </div>
+            <div class="legend-item">
+                <div class="color-box" style="background: #888888;"></div>
+                <span>Containment Boundaries</span>
+            </div>
+            <div class="legend-item">
+                <div class="color-box" style="background: #00ff00; border: 1px solid #000;"></div>
+                <span>Entry Window (sin(ω<sub>τ</sub>t) = 1)</span>
+            </div>
+        </div>
+
+        <div class="equation">
+            <strong>Tau Field Parameters (Chapter III.4.1):</strong><br>
+            ε(t) = ε₀ sin(Ωt) &nbsp;&nbsp;&nbsp; λ(t) = λ₀ e<sup>-βt</sup><br>
+            <strong>Breathing Frequency:</strong> Ω = 0.1 rad/s<br>
+            <strong>Entry Windows:</strong> sin(ω<sub>τ</sub>t) = 1 &nbsp;&nbsp;&nbsp; <strong>Phase:</strong> sin(ω<sub>τ</sub>t) = <span id="phaseValue">0.00</span>
+        </div>
+        
+        <div style="text-align: center; margin-top: 10px; font-size: 12px;">
+            Time: <span id="timeDisplay">0.00</span>s &nbsp;&nbsp;&nbsp;
+            Field Status: <span id="fieldStatus" style="font-weight: bold; color: #666;">Stable</span> &nbsp;&nbsp;&nbsp;
+            Aperture: <span id="apertureStatus" style="font-weight: bold;">Closed</span>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('tauCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // UI elements
+        const epsilonSlider = document.getElementById('epsilonSlider');
+        const omegaSlider = document.getElementById('omegaSlider');
+        const lambdaSlider = document.getElementById('lambdaSlider');
+        const betaSlider = document.getElementById('betaSlider');
+        
+        const epsilonValue = document.getElementById('epsilonValue');
+        const omegaValue = document.getElementById('omegaValue');
+        const lambdaValue = document.getElementById('lambdaValue');
+        const betaValue = document.getElementById('betaValue');
+        const timeDisplay = document.getElementById('timeDisplay');
+        const phaseValue = document.getElementById('phaseValue');
+        const fieldStatus = document.getElementById('fieldStatus');
+        const apertureStatus = document.getElementById('apertureStatus');
+        
+        let time = 0;
+        let isAnimating = true;
+        let showCrossSectionMode = false;
+        let entrySimulation = false;
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const scale = 150;
+        
+        // Add event listeners to update displays
+        epsilonSlider.addEventListener('input', updateDisplays);
+        omegaSlider.addEventListener('input', updateDisplays);
+        lambdaSlider.addEventListener('input', updateDisplays);
+        betaSlider.addEventListener('input', updateDisplays);
+        
+        function updateDisplays() {
+            epsilonValue.textContent = epsilonSlider.value;
+            omegaValue.textContent = omegaSlider.value;
+            lambdaValue.textContent = lambdaSlider.value;
+            betaValue.textContent = betaSlider.value;
+            
+            // Update phase and status displays
+            const omega_tau = parseFloat(omegaSlider.value);
+            const phase = Math.sin(omega_tau * time);
+            phaseValue.textContent = phase.toFixed(2);
+            
+            // Determine aperture status based on Chapter III.6.1
+            const epsilon0 = parseFloat(epsilonSlider.value);
+            const breathingFreq = 0.1;
+            const epsilon_t = epsilon0 * Math.sin(breathingFreq * time);
+            const entryThreshold = epsilon0 * 0.7; // Entry threshold from protocol
+            
+            if (Math.abs(phase) > 0.9 && epsilon_t > entryThreshold) {
+                apertureStatus.textContent = "Entry Window Open";
+                apertureStatus.style.color = "#00aa00";
+            } else if (epsilon_t > entryThreshold * 0.5) {
+                apertureStatus.textContent = "Forming";
+                apertureStatus.style.color = "#aa6600";
+            } else {
+                apertureStatus.textContent = "Closed";
+                apertureStatus.style.color = "#666666";
+            }
+            
+            // Field stability assessment
+            const lambda_t = parseFloat(lambdaSlider.value) * Math.exp(-parseFloat(betaSlider.value) * time);
+            if (lambda_t < 0.001) {
+                fieldStatus.textContent = "Field Decay Critical";
+                fieldStatus.style.color = "#cc0000";
+            } else if (epsilon_t < epsilon0 * 0.2) {
+                fieldStatus.textContent = "Low Power";
+                fieldStatus.style.color = "#aa6600";
+            } else {
+                fieldStatus.textContent = "Stable";
+                fieldStatus.style.color = "#00aa00";
+            }
+        }
+        
+        function getFieldIntensity(r, t) {
+            const epsilon0 = parseFloat(epsilonSlider.value);
+            const omega_tau = parseFloat(omegaSlider.value);
+            const lambda0 = parseFloat(lambdaSlider.value);
+            const beta = parseFloat(betaSlider.value);
+            
+            const breathingFreq = 0.1;
+            const epsilon_t = epsilon0 * Math.sin(breathingFreq * t);
+            const lambda_t = lambda0 * Math.exp(-beta * t);
+            
+            const sineTerm = Math.sin(omega_tau * t);
+            const expTerm = Math.exp(-lambda_t * r * r);
+            
+            return Math.abs(epsilon_t * sineTerm * expTerm);
+        }
+        
+        function intensityToColor(intensity) {
+            // Normalize intensity to 0-1 range
+            const normalized = Math.min(1, intensity / 2);
+            
+            if (normalized < 0.25) {
+                // Blue to Cyan
+                const t = normalized * 4;
+                return `rgb(0, ${Math.floor(t * 255)}, 255)`;
+            } else if (normalized < 0.5) {
+                // Cyan to Green
+                const t = (normalized - 0.25) * 4;
+                return `rgb(0, 255, ${Math.floor((1-t) * 255)})`;
+            } else if (normalized < 0.75) {
+                // Green to Yellow
+                const t = (normalized - 0.5) * 4;
+                return `rgb(${Math.floor(t * 255)}, 255, 0)`;
+            } else {
+                // Yellow to Red
+                const t = (normalized - 0.75) * 4;
+                return `rgb(255, ${Math.floor((1-t) * 255)}, 0)`;
+            }
+        }
+        
+        function drawField() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (showCrossSectionMode) {
+                drawCrossSection();
+            } else {
+                drawFieldVisualization();
+            }
+            
+            // Draw aperture core with entry window indication
+            const omega_tau = parseFloat(omegaSlider.value);
+            const phase = Math.sin(omega_tau * time);
+            const epsilon0 = parseFloat(epsilonSlider.value);
+            const breathingFreq = 0.1;
+            const epsilon_t = epsilon0 * Math.sin(breathingFreq * time);
+            const entryThreshold = epsilon0 * 0.7;
+            
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 20, 0, 2 * Math.PI);
+            
+            // Color core based on entry window status (Chapter III.6.1)
+            if (Math.abs(phase) > 0.9 && epsilon_t > entryThreshold) {
+                ctx.fillStyle = '#ccffcc'; // Entry window open
+                ctx.strokeStyle = '#00aa00';
+                ctx.lineWidth = 3;
+            } else {
+                ctx.fillStyle = 'white';
+                ctx.strokeStyle = 'black';
+                ctx.lineWidth = 2;
+            }
+            
+            ctx.fill();
+            ctx.stroke();
+            
+            timeDisplay.textContent = time.toFixed(2);
+            updateDisplays();
+        }
+        
+        function drawFieldVisualization() {
+            const maxRadius = Math.min(canvas.width, canvas.height) / 2 - 50;
+            const stepSize = 8;
+            
+            for (let x = 0; x < canvas.width; x += stepSize) {
+                for (let y = 0; y < canvas.height; y += stepSize) {
+                    const dx = x - centerX;
+                    const dy = y - centerY;
+                    const r = Math.sqrt(dx * dx + dy * dy) / scale;
+                    
+                    if (r > 0.1 && r < maxRadius / scale) {
+                        const intensity = getFieldIntensity(r, time);
+                        const color = intensityToColor(intensity);
+                        
+                        ctx.fillStyle = color;
+                        ctx.globalAlpha = 0.7;
+                        ctx.fillRect(x, y, stepSize, stepSize);
+                        ctx.globalAlpha = 1.0;
+                    }
+                }
+            }
+            
+            // Draw field boundary circles
+            ctx.strokeStyle = '#888888';
+            ctx.lineWidth = 1;
+            ctx.globalAlpha = 0.5;
+            for (let i = 1; i <= 3; i++) {
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, i * scale * 0.5, 0, 2 * Math.PI);
+                ctx.stroke();
+            }
+            ctx.globalAlpha = 1.0;
+        }
+        
+        function drawCrossSection() {
+            // Draw cross-section graph
+            const graphHeight = 200;
+            const graphY = canvas.height - graphHeight - 50;
+            const maxRadius = 2.0;
+            
+            // Background
+            ctx.fillStyle = '#f8f8f8';
+            ctx.fillRect(50, graphY, canvas.width - 100, graphHeight);
+            ctx.strokeStyle = '#ccc';
+            ctx.strokeRect(50, graphY, canvas.width - 100, graphHeight);
+            
+            // Grid lines
+            ctx.strokeStyle = '#eee';
+            ctx.lineWidth = 1;
+            for (let i = 1; i < 10; i++) {
+                const x = 50 + (canvas.width - 100) * i / 10;
+                ctx.beginPath();
+                ctx.moveTo(x, graphY);
+                ctx.lineTo(x, graphY + graphHeight);
+                ctx.stroke();
+            }
+            for (let i = 1; i < 5; i++) {
+                const y = graphY + graphHeight * i / 5;
+                ctx.beginPath();
+                ctx.moveTo(50, y);
+                ctx.lineTo(canvas.width - 50, y);
+                ctx.stroke();
+            }
+            
+            // Plot field intensity
+            ctx.strokeStyle = '#ff0000';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            
+            let firstPoint = true;
+            for (let x = 50; x < canvas.width - 50; x += 2) {
+                const r = ((x - 50) / (canvas.width - 100)) * maxRadius;
+                const intensity = getFieldIntensity(r, time);
+                const y = graphY + graphHeight - (intensity / 2) * graphHeight;
+                
+                if (firstPoint) {
+                    ctx.moveTo(x, y);
+                    firstPoint = false;
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.stroke();
+            
+            // Labels
+            ctx.fillStyle = '#333';
+            ctx.font = '12px Arial';
+            ctx.fillText('r', canvas.width - 30, graphY + graphHeight + 15);
+            ctx.fillText('|Ψ|', 30, graphY - 5);
+            ctx.fillText('0', 45, graphY + graphHeight + 15);
+            ctx.fillText('2', canvas.width - 60, graphY + graphHeight + 15);
+        }
+        
+        function animate() {
+            if (isAnimating) {
+                time += 0.05;
+                drawField();
+            }
+            requestAnimationFrame(animate);
+        }
+        
+        function toggleAnimation() {
+            isAnimating = !isAnimating;
+        }
+        
+        function resetTime() {
+            time = 0;
+            drawField();
+        }
+        
+        function toggleCrossSection() {
+            showCrossSectionMode = !showCrossSectionMode;
+            drawField();
+        }
+        
+        function simulateEntry() {
+            // Jump to optimal entry phase (Chapter III.6.1)
+            const omega_tau = parseFloat(omegaSlider.value);
+            const targetPhase = Math.PI / 2; // sin(ωτt) = 1
+            time = targetPhase / omega_tau;
+            entrySimulation = true;
+            drawField();
+            
+            // Reset simulation flag after 2 seconds
+            setTimeout(() => {
+                entrySimulation = false;
+            }, 2000);
+        }
+        
+        // Initialize
+        updateDisplays();
+        drawField();
+        animate();
+    </script>
+</body>
+</html>

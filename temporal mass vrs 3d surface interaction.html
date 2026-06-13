@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Temporal Mass 3D Surface Plot</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .title {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            display: block;
+            margin: 0 auto;
+        }
+        .controls {
+            text-align: center;
+            margin-top: 15px;
+        }
+        .legend {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+            font-size: 12px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            justify-content: center;
+        }
+        .color-box {
+            width: 15px;
+            height: 15px;
+            border: 1px solid #333;
+        }
+        .equation {
+            text-align: center;
+            margin: 15px 0;
+            font-family: 'Times New Roman', serif;
+            font-size: 14px;
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        input[type="range"] {
+            width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="title">Diagram 2.1: Temporal Mass vs Velocity 3D Surface<br>
+        Tm = km·2q·m·v^(ABC-1)·a</div>
+        
+        <canvas id="surfaceCanvas" width="800" height="600"></canvas>
+        
+        <div class="controls">
+            <div class="slider-container">
+                <label>ABC Value:</label>
+                <input type="range" id="abcSlider" min="1.5" max="4.0" step="0.1" value="2.5">
+                <span id="abcValue">2.5</span>
+            </div>
+            <div class="slider-container">
+                <label>Rotation:</label>
+                <input type="range" id="rotationSlider" min="0" max="360" step="5" value="45">
+                <span id="rotationValue">45°</span>
+            </div>
+            <button onclick="toggleAnimation()">Rotate View</button>
+        </div>
+        
+        <div class="legend">
+            <div class="legend-item">
+                <div class="color-box" style="background: #ff0000;"></div>
+                <span>Collapse Zone (Tm < 0.1)</span>
+            </div>
+            <div class="legend-item">
+                <div class="color-box" style="background: #ff8800;"></div>
+                <span>Tau Intervention (0.1 ≤ Tm < 0.2)</span>
+            </div>
+            <div class="legend-item">
+                <div class="color-box" style="background: #00ff00;"></div>
+                <span>High Inertia Zone (Tm > 10)</span>
+            </div>
+        </div>
+
+        <div class="equation">
+            <strong>Critical Velocity:</strong> v<sub>c</sub> = (Tm<sub>threshold</sub> / (km·2q·m·a))<sup>1/(ABC-1)</sup><br>
+            <strong>Parameters:</strong> km = 1.0, q = 1.0, m = 1.0 kg, a = 1.0 m/s²
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('surfaceCanvas');
+        const ctx = canvas.getContext('2d');
+        const abcSlider = document.getElementById('abcSlider');
+        const rotationSlider = document.getElementById('rotationSlider');
+        const abcValue = document.getElementById('abcValue');
+        const rotationValue = document.getElementById('rotationValue');
+        
+        let isRotating = false;
+        let autoRotation = 0;
+        
+        // Parameters
+        const km = 1.0, q = 1.0, m = 1.0, a = 1.0;
+        const maxV = 3.0;
+        const maxTm = 20.0;
+        
+        function calculateTm(v, abc) {
+            if (v === 0) return 0;
+            return km * 2 * q * m * Math.pow(v, abc - 1) * a;
+        }
+        
+        function getTmColor(tm) {
+            if (tm < 0.1) return '#ff0000'; // Red - Collapse zone
+            if (tm < 0.2) return '#ff8800'; // Orange - Tau intervention
+            if (tm < 2.0) return '#ffff00'; // Yellow - Transition
+            if (tm < 10.0) return '#88ff88'; // Light green - Moderate inertia
+            return '#00ff00'; // Green - High inertia
+        }
+        
+        function project3D(x, y, z, rotation) {
+            const cos = Math.cos(rotation * Math.PI / 180);
+            const sin = Math.sin(rotation * Math.PI / 180);
+            
+            // Rotate around Y axis
+            const x2 = x * cos - z * sin;
+            const z2 = x * sin + z * cos;
+            
+            // Project to 2D
+            const scale = 200;
+            const offsetX = canvas.width / 2;
+            const offsetY = canvas.height - 100;
+            
+            const projX = offsetX + x2 * scale;
+            const projY = offsetY - y * 10 - z2 * scale * 0.5;
+            
+            return { x: projX, y: projY, z: z2 };
+        }
+        
+        function drawSurface() {
+            const abc = parseFloat(abcSlider.value);
+            const rotation = parseFloat(rotationSlider.value) + autoRotation;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Store points for sorting
+            const points = [];
+            
+            // Generate surface points
+            for (let vi = 0; vi < 40; vi++) {
+                for (let ai = 0; ai < 30; ai++) {
+                    const v = (vi / 39) * maxV;
+                    const abcVar = 1.5 + (ai / 29) * 2.5; // ABC from 1.5 to 4.0
+                    
+                    const tm = Math.min(calculateTm(v, abcVar), maxTm);
+                    
+                    const x = v / maxV * 2 - 1; // -1 to 1
+                    const y = tm / maxTm; // 0 to 1
+                    const z = (abcVar - 3) / 2; // -0.75 to 0.75
+                    
+                    const proj = project3D(x, y, z, rotation);
+                    
+                    points.push({
+                        x: proj.x,
+                        y: proj.y,
+                        z: proj.z,
+                        tm: tm,
+                        v: v,
+                        abc: abcVar
+                    });
+                }
+            }
+            
+            // Sort by z-depth for proper rendering
+            points.sort((a, b) => a.z - b.z);
+            
+            // Draw points
+            points.forEach(point => {
+                const color = getTmColor(point.tm);
+                const size = 3;
+                
+                ctx.fillStyle = color;
+                ctx.globalAlpha = 0.7;
+                ctx.beginPath();
+                ctx.arc(point.x, point.y, size, 0, 2 * Math.PI);
+                ctx.fill();
+            });
+            
+            ctx.globalAlpha = 1.0;
+            
+            // Draw current ABC slice
+            ctx.strokeStyle = '#0000ff';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            
+            for (let vi = 0; vi < 100; vi++) {
+                const v = (vi / 99) * maxV;
+                const tm = Math.min(calculateTm(v, abc), maxTm);
+                
+                const x = v / maxV * 2 - 1;
+                const y = tm / maxTm;
+                const z = (abc - 3) / 2;
+                
+                const proj = project3D(x, y, z, rotation);
+                
+                if (vi === 0) {
+                    ctx.moveTo(proj.x, proj.y);
+                } else {
+                    ctx.lineTo(proj.x, proj.y);
+                }
+            }
+            ctx.stroke();
+            
+            // Draw axes labels
+            drawAxes(rotation);
+        }
+        
+        function drawAxes(rotation) {
+            ctx.fillStyle = '#333';
+            ctx.font = '12px Arial';
+            
+            // X-axis (Velocity)
+            const xAxis = project3D(1.2, 0, 0, rotation);
+            ctx.fillText('Velocity (m/s)', xAxis.x, xAxis.y);
+            
+            // Y-axis (Temporal Mass)
+            const yAxis = project3D(0, 1.2, 0, rotation);
+            ctx.fillText('Temporal Mass', yAxis.x - 40, yAxis.y);
+            
+            // Z-axis (ABC)
+            const zAxis = project3D(0, 0, 1, rotation);
+            ctx.fillText('ABC Value', zAxis.x, zAxis.y);
+            
+            // Critical thresholds
+            ctx.fillStyle = '#ff0000';
+            ctx.font = '10px Arial';
+            const threshold1 = project3D(-1, 0.1 / maxTm, 0, rotation);
+            ctx.fillText('Tm = 0.1 (Collapse)', threshold1.x, threshold1.y);
+            
+            const threshold2 = project3D(-1, 0.2 / maxTm, 0, rotation);
+            ctx.fillText('Tm = 0.2 (Tau)', threshold2.x, threshold2.y);
+        }
+        
+        function toggleAnimation() {
+            isRotating = !isRotating;
+            if (isRotating) {
+                animate();
+            }
+        }
+        
+        function animate() {
+            if (isRotating) {
+                autoRotation += 1;
+                drawSurface();
+                requestAnimationFrame(animate);
+            }
+        }
+        
+        // Event listeners
+        abcSlider.addEventListener('input', () => {
+            abcValue.textContent = abcSlider.value;
+            drawSurface();
+        });
+        
+        rotationSlider.addEventListener('input', () => {
+            rotationValue.textContent = rotationSlider.value + '°';
+            drawSurface();
+        });
+        
+        // Initial draw
+        drawSurface();
+    </script>
+</body>
+</html>
