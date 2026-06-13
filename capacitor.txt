@@ -1,0 +1,8 @@
++--------------------------- Top Layer ----------------------------+
+¦  • Quartz dielectric (birefringence-tuned)                      ¦
+¦  • Infrared beam alignment grid                                 ¦
+¦  ----------- Superconducting charge retention layer ----------- ¦
+¦  • Multi-layer vapor deposition structure                      ¦
+¦  • Cryo-free cooling integration                               ¦
+¦  • Hard X-ray spectrum optimization                            ¦
++--------------------------- Bottom Layer ----------------------------+
