@@ -19,8 +19,11 @@ This repository contains the complete **Harmonic Framework of Reality** — a Gr
 All physical phenomena, from subatomic particles to galactic clusters, from light to consciousness, are standing waves or harmonics of this lattice.
 
 No other theory in history has 160 peer reviewed experiments, papers and offical documents- comfirming a scientific theory,
+https://github.com/peterjamesthompson101-svg/The-Grand-Unified-Field-Theory/blob/main/Complete%20Evidence%20Compendium%20160%20peer%20reviewed%20papers%20and%20experiments.pdf
 
 ONE NOW MUST ASK WHY THIS THEORY HAS NOT BEEN ACCEPTED...
+https://github.com/peterjamesthompson101-svg/CERN-Whistleblowers-Brief
+
 ---
 
 ## 📄 Book Contents
@@ -157,4 +160,7 @@ We are just learning to hear it.
 
 **Repository:** https://github.com/peterjamesthomsons101-svg/The-Grand-Unified-Field-Theory  
 **Live Book:** https://peterjamesthomsons101-svg.github.io/The-Grand-Unified-Field-Theory/
+**Suppression Evidence** https://github.com/peterjamesthompson101-svg/CERN-Whistleblowers-Brief
+**Historic Papers of Theory** https://github.com/peterjamesthompson101-svg/Physics-Papers
+
 
