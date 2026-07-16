@@ -68,7 +68,7 @@ https://github.com/peterjamesthompson101-svg/CERN-Whistleblowers-Brief
 
 The complete book is available online at:
 
-**https://peterjamesthomsons101-svg.github.io/The-Grand-Unified-Field-Theory/**
+**https://peterjamesthompson101-svg.github.io/The-Grand-Unified-Field-Theory/**
 
 ---
 
@@ -159,7 +159,7 @@ We are just learning to hear it.
 ---
 
 **Repository:** https://github.com/peterjamesthomsons101-svg/The-Grand-Unified-Field-Theory  
-**Live Book:** https://peterjamesthomsons101-svg.github.io/The-Grand-Unified-Field-Theory/
+**Live Book:** https://peterjamesthompson101-svg.github.io/The-Grand-Unified-Field-Theory/
 **Suppression Evidence** https://github.com/peterjamesthompson101-svg/CERN-Whistleblowers-Brief
 **Historic Papers of Theory** https://github.com/peterjamesthompson101-svg/Physics-Papers
 
