@@ -70,6 +70,7 @@ Date	Publication	Status
 June 22, 2025	The Harmonic Framework of Reality Rev III	Complete exposition
 April 2026	Public Facebook post	Analysis of the Wow! Signal
 June 2026	GitHub repository	Complete archive
+
 ⚠️ Copyright and License
 
 This work is protected by copyright. All rights are reserved.
@@ -77,6 +78,7 @@ This work is protected by copyright. All rights are reserved.
 No part of this book may be reproduced, redistributed, translated, adapted, or used to build any device without explicit written permission from the author.
 
 For permissions, contact: peterjamesthompson101@gmail.com
+
 📞 Contact
 
 Author: Peter James Thompson
@@ -106,5 +108,6 @@ We are just learning to hear it.
 Respository: https://github.com/peterjamesthompson101-svg/The Grand Unified Field Theory
 
 🔗 Live Book
+
 
 The complete book is available online at:Respository      bbbb
