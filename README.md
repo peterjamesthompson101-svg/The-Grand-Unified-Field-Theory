@@ -18,6 +18,9 @@ This repository contains the complete **Harmonic Framework of Reality** — a Gr
 
 All physical phenomena, from subatomic particles to galactic clusters, from light to consciousness, are standing waves or harmonics of this lattice.
 
+No other theory in history has 160 peer reviewed experiments, papers and offical documents- comfirming a scientific theory,
+
+ONE NOW MUST ASK WHY THIS THEORY HAS NOT BEEN ACCEPTED...
 ---
 
 ## 📄 Book Contents
