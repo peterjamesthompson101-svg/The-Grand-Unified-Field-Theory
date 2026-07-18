@@ -83,7 +83,7 @@ The complete book is available online at:
 
 | File | Description |
 |------|-------------|
-| `The Grand Unified Field Theory.pdf` | Full book (157 pages) |
+| `The Grand Unified Field Theory.pdf` | Full book (222 pages) |
 | `index.html` | Web viewer for the PDF |
 
 ---
