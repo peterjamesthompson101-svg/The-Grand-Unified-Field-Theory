@@ -60,7 +60,14 @@ https://github.com/peterjamesthompson101-svg/CERN-Whistleblowers-Brief
 | M | Black Holes as Superconducting Phase Converters |
 | N | The Complete Derivation of the Fine-Structure Constant |
 | O | The Complete Derivation Compendium |
+| P | Thermodynamics |
+| Q | String Theory |
+| R | Quantum Vacume |
+| S | Time Crystals |
+| T | The 32 Dimension Harmonic Manifold |
+| U | The Complete Blast Shield Nuclear |
 | Non-Academic | A Layman's Introduction to the Grand Unified Theory |
+| Evidence |
 
 ---
 
